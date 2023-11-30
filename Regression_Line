@@ -1,0 +1,110 @@
+#installing libraries
+pip install pandas
+pip install plotly.express
+pip install seaborn
+pip install numpy
+
+#Importing libraries
+import pandas as pd #work with tables and files importation
+import plotly.express as px #librarie to create dinamics graphics
+import seaborn as sns #Libraries to create graphics
+import numpy as np #High level math functions
+
+experience_salary = pd.read_csv('/content/Experience-Salary.csv', sep = ',') #importing the file
+
+experience_salary.head() #Show 5 first lines
+
+experience_salary.describe() #database statistics
+
+client_ID_nulls = experience_salary['client_ID'].isnull().sum() #verifying null values in the column client_ID
+print(f'There are {client_ID_nulls} null values in the column Client_ID')
+
+exp_nulls = experience_salary['exp(in months)'].isnull().sum() #verifying null values in the column exp(in months)
+print(f'There are {exp_nulls} null values in the column exp(in months)')
+
+salary_nulls = experience_salary['salary(in thousands)'].isnull().sum() #verifying null values in the column salary(in thousands)
+print(f'There are {salary_nulls} null values in the column salary(in thousands)')
+
+#Create a variable independent of the column exp(in months)
+x_exp = experience_salary.iloc[:,1].values #We fetch all records from column exp(in months) and convert into array format
+#the iloc command allows you to select a set of records, the ":" means we are selecting all records and the "1" the second column of the dataframe
+x_exp
+
+#Creating a independent variable for what we want to predict
+y_salary = experience_salary.iloc[:,2].values
+y_salary
+
+np.corrcoef(x_exp,y_salary) #Show a matrix making a correlation between both data
+
+#Remove the column client_ID from dataset
+DB_exp_salary = experience_salary.drop('client_ID', axis=1)
+DB_exp_salary.head()
+
+#Show the correlation in graphic
+correlation = DB_exp_salary.corr()
+#plot from matrix
+plot = sns.heatmap(correlation, annot=True,linewidths=.3)
+plot
+
+#TREATING THE DATA FOR DE ML MODEL
+#View variable format
+x_exp.shape
+
+#transform array in matrix
+x_exp = x_exp.reshape(-1,1)
+x_exp
+
+#view the format again
+x_exp.shape
+
+#APPLYING THE DATA TO THE REGRESSION MACHINE ALGORITHM
+from sklearn.linear_model import LinearRegression
+LR_salary = LinearRegression() #creates the linear regression variable
+type(LR_salary) #show the variable format
+
+#TRAINING THE MODEL
+LR_salary.fit(x_exp,y_salary)
+
+#Checking the interception
+LR_salary.intercept_
+
+#Checking the angular coefficient of the straight line
+LR_salary.coef_
+
+#Based on the months of experience, we will estimate the salary value of professionals with the predict function
+salary_pred = LR_salary.predict(x_exp)
+salary_pred
+
+#GRAPHIC VIEWS
+#To plot the graph the variable X need to be an array type, to do it I've used the function ravel()
+x_exp.ravel()
+
+#plot the expansion graph with the px.scatter function
+graphic = px.scatter(x = x_exp.ravel(), y = y_salary)
+graphic.show()
+
+#Estimate salary values ​​based on a number of months of experience
+exp_month = 56
+LR_salary.intercept_ + LR_salary.coef_ * exp_month
+
+exp_month = 120
+LR_salary.intercept_ + LR_salary.coef_ * exp_month
+
+#Verifying in another way
+
+LR_salary.predict([[18]])
+
+#Algorithm quality indication (The closer to 1, the better the model quality)
+LR_salary.score(x_exp,y_salary)
+
+#View model error's
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+MSE = mean_squared_error(y_salary,salary_pred)
+MSE
+
+#CALCULATE MAE (mean absolut error)
+mean_absolute_error(y_salary,salary_pred)
+
+#Calcular RMSE
+np.sqrt(MSE)
+
