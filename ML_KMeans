@@ -1,0 +1,166 @@
+#installing libraries
+pip install pandas
+pip install plotly.express
+pip install seaborn
+pip install numpy
+
+#Importing libraries
+import pandas as pd #work with tables and files importation
+import plotly.express as px #librarie to create dinamics graphics
+import seaborn as sns #Libraries to create graphics
+import numpy as np #High level math functions
+
+#IMPORT THE DATASET
+exp_sal = pd.read_csv('/content/Experience-Salary.csv')
+exp_sal.head()
+
+personal_data = pd.read_excel('/content/dados_pessoais.xlsx')
+personal_data.head()
+
+br_state = pd.read_excel('/content/estados_brasileiros.xls')
+br_state.head()
+
+#ANALYSE AND CLEAN THE DATA
+
+exp_sal.info()
+exp_sal.describe()
+
+personal_data.info()
+personal_data.describe()
+
+br_state.info()
+br_state.describe()
+
+#verify null value in the dataset
+br_state.isna().sum()
+
+exp_sal.isna().sum()
+
+personal_data.isna().sum()
+
+#verify the line with null values
+
+br_state.loc[br_state['pais'].isnull()]
+
+personal_data.loc[personal_data['peso'].isnull()]
+
+#Dealing with null values, it depends on the data, in this case I'm using the average for weight
+avrg = personal_data.peso.mean() #to calculate the average
+med = personal_data.peso.median() #to calculate the median
+round(avrg, 2) #to round the average value
+
+print(f'The average weight is {round(avrg,2)}\n The median weight is {med}')
+
+#replacing the null for the average
+
+personal_data.peso.fillna(round(avrg,2),inplace=True)
+
+personal_data.isna().sum() #verifying if it worked
+
+#Dealing with null values, it depends on the data, in this case I know the country (pais) is brasil
+br_state.fillna('Brasil',inplace=True)
+
+br_state.isna().sum()
+
+#Analyse the data distribution
+
+import matplotlib.pyplot as plt
+
+personal_data.hist(column='peso',figsize=(15,7),bins=20) #to plot a graphic with the weidth
+plt.show()
+
+personal_data = personal_data.rename(columns={'id_cliente':'client_ID'}) #rename the column from personal data
+
+#create a dataframe joining the tables
+
+df_complet = pd.merge(personal_data, exp_sal, on='client_ID').merge(br_state, on='id_estado')
+
+df_complet.head()
+
+#Change tge column 'sigla_estado' to capital letter
+
+df_complet['sigla_estado'] = df_complet.sigla_estado.str.upper()
+
+df_complet
+
+#Changing columns order
+
+df_complet = df_complet[['client_ID','genero','peso','colesterol','exp(in months)','salary(in thousands)','id_estado','estado','sigla_estado','pais']]
+df_complet.head()
+
+#analysing the data with machine learning
+
+from sklearn.cluster import KMeans
+
+#create a wcss clustering function in kmeans
+def calculate_wcss(personal_data):
+  wcss = []
+  for k in range(1,11):
+    kmeans = KMeans(n_clusters = k)
+    kmeans.fit(X=personal_data)
+    wcss.append(kmeans.inertia_)
+  return wcss
+
+personal_data = df_complet[['exp(in months)','salary(in thousands)']]
+personal_data.head()
+
+wcss_personal = calculate_wcss(personal_data)
+
+#View the data from the WCSS function
+
+for i in range(len(wcss_personal)):
+  print(f'O cluster {i} possui valor de WCSS de: {wcss_personal[i]}')
+
+#View the elbow chart
+#the elbow graph is used to define the best number of clusters, the ideal number is defined after the decrease in
+
+import plotly.express as px #create dynamic graphics
+import plotly.offline as py
+import plotly.graph_objects as go #create and cocatenate graphics
+
+wcss_graphic = px.line(x = range(1,11),
+                       y=wcss_personal
+                       )
+fig = go.Figure(wcss_graphic)
+
+fig.update_layout(title='Calculate WCSS',
+                  xaxis_title='Nº of Clusters',
+                  yaxis_title= 'WCSS value',
+                  template = 'plotly_white'
+                  )
+
+fig.show()
+
+#In this case the ideal number of clusters is 3
+kmeans_data = KMeans(n_clusters = 3, random_state = 0)
+
+df_complet['cluster'] = kmeans_data.fit_predict(personal_data)
+
+df_complet.head()
+
+#calculate the centroids of each cluster
+
+cluster_centroids = kmeans_data.cluster_centers_
+cluster_centroids
+
+#Here the view from the 3 cluster centroids according to them atributes, we can see the centroids salary in thousands and exp in months
+
+graphic = px.scatter(x=df_complet['salary(in thousands)'],
+                       y = df_complet['exp(in months)'],
+                       color = df_complet['cluster']
+                       )
+graphic_cen = px.scatter(x= cluster_centroids[:,0],
+                         y= cluster_centroids[:,1],
+                         size = [7,7,7])
+
+final_graphic = go.Figure(data = graphic.data + graphic_cen.data)
+final_graphic.show()
+
+#create a column with a label according to the exp in month column
+
+df_complet['level'] = df_complet['exp(in months)'].apply(lambda x: 'Beginner' if x < 12 else('Intermediary' if x < 26 else 'Expert'))
+
+df_complet
+
+
+
